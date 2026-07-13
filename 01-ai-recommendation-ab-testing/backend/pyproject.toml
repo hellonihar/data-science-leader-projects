@@ -22,7 +22,9 @@ dependencies = [
 ]
 
 [project.scripts]
-recommendation-ab-testing = "recommendation_ab_testing:main"
+seed-db = "app.seed:main"
+migrate = "alembic.config:main"
+dev-server = "uvicorn:main"
 
 [build-system]
 requires = ["uv_build>=0.9.26,<0.10.0"]
