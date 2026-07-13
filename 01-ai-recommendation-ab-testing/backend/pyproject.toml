@@ -1,0 +1,29 @@
+[project]
+name = "recommendation-ab-testing"
+version = "0.1.0"
+description = "AI Recommendation A/B Testing Platform - Backend"
+readme = "README.md"
+authors = [
+    { name = "Nihar Ranjan", email = "hellonihar@hotmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.18.5",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.139.0",
+    "numpy>=2.5.1",
+    "pandas>=3.0.3",
+    "pydantic-settings>=2.14.2",
+    "redis>=8.0.1",
+    "scikit-surprise>=1.1.5",
+    "scipy>=1.18.0",
+    "sqlalchemy[asyncio]>=2.0.51",
+    "uvicorn[standard]>=0.51.0",
+]
+
+[project.scripts]
+recommendation-ab-testing = "recommendation_ab_testing:main"
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
