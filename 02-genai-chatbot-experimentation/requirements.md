@@ -27,8 +27,8 @@ A full-stack A/B testing platform that compares a **baseline chatbot** (direct L
 | Frontend           | React 19 + TypeScript 6 + Vite 8 + Recharts |
 | Backend            | FastAPI + SQLAlchemy async + PostgreSQL |
 | Vector Store       | pgvector (PostgreSQL extension)         |
-| LLM                | Azure OpenAI / OpenAI API               |
-| Embeddings         | text-embedding-ada-002 / text-embedding-3-small |
+| LLM                | Groq API (Llama 3 / Mixtral)            |
+| Embeddings         | Groq API embeddings or sentence-transformers |
 | Async Tasks        | Redis + ARQ or Celery                   |
 | Hallucination      | Custom NLI-based factual consistency scorer |
 | Containerization   | Docker Compose                          |
@@ -240,7 +240,7 @@ A full-stack A/B testing platform that compares a **baseline chatbot** (direct L
 
 | Item | Rationale |
 |------|-----------|
-| Multi-LLM provider comparison | Single provider (Azure OpenAI) for controlled experiment |
+| Multi-LLM provider comparison | Single provider (Groq API) for controlled experiment |
 | Streaming responses | SSE adds complexity; batch responses for MVP |
 | User authentication / SSO | Simple user ID header for MVP; auth in later phase |
 | Production-grade content filtering | Basic filtering only; advanced RAI filtering deferred |
