@@ -188,3 +188,67 @@ User Query ──► POST /api/chat ──► Assignment Lookup (Redis/DB)
 | **pgvector instead of separate vector DB** | Reduces ops complexity; single PostgreSQL handles relational data + embeddings; ACID for audit compliance |
 | **SHA-256 deterministic assignment** | Ensures consistent user experience per experiment while maintaining statistical validity |
 | **Custom NLI hallucination scorer** | Offline, no third-party data leakage, fully auditable, zero marginal cost per inference |
+
+---
+
+## Hallucination Scorer — Deep Dive
+
+The hallucination scorer is an **NLI-based (Natural Language Inference) factual consistency checker** that runs automatically on every assistant response. It answers the question: "Is the model's response faithful to the source documents it was given?"
+
+### Pipeline Steps
+
+**1. Claim Decomposition**
+
+The assistant's response is split into atomic factual statements. Example response: *"Our return policy lasts 30 days from the date of purchase and covers unopened items only"* decomposes into two claims:
+- Claim A: "Return policy duration is 30 days from purchase"
+- Claim B: "Only unopened items are covered by the return policy"
+
+Decomposition is done via either a lightweight LLM call or a sentence-level segmentation model.
+
+**2. Source Grounding**
+
+Each claim is paired with relevant source text for verification:
+- **Variant B** — claims are checked against the *actual retrieved document chunks* that were injected into the prompt. This catches cases where the model fabricates information not present in the provided corpus.
+- **Variant A** — claims are checked against a general knowledge baseline or flagged as unverifiable when no retrieval context exists (since the baseline has no grounding documents).
+
+**3. NLI Classification**
+
+Each (claim, source_passage) pair is fed into an NLI model (e.g., fine-tuned BART, DeBERTa, or a small BERT classifier) which outputs one of three labels:
+
+| Label | Meaning | Action |
+|-------|---------|--------|
+| **Entailment** | Claim is directly supported by the source | Count toward consistency score |
+| **Neutral** | Claim is neither supported nor contradicted | Count as minor inconsistency |
+| **Contradiction** | Claim is directly contradicted by the source | Count as major hallucination |
+
+**4. Response-Level Aggregation**
+
+Per-response scores are calculated:
+- **Entailment ratio** = (# entailed claims) / (total claims)
+- **Contradiction ratio** = (# contradicted claims) / (total claims)
+
+Final category assignment:
+| Condition | Category |
+|-----------|----------|
+| Entailment ratio ≥ 80% AND contradiction ratio = 0% | **Consistent** |
+| Contradiction ratio > 0% | **Major Hallucination** |
+| Everything else (mixed or mostly neutral) | **Minor Inconsistency** |
+
+A numeric score (0–1) is also computed as the weighted combination of entailment and contradiction ratios.
+
+**5. Storage & Audit**
+
+Results are persisted in the `hallucination_scores` table:
+- `score (float 0–1)` — numeric consistency score
+- `category (enum)` — Consistent / Minor Inconsistency / Major Hallucination
+- `details_json (jsonb)` — full claim-by-claim breakdown with each claim text, source passage, NLI logits, and per-claim label for full auditability
+
+### Key Design Rationale
+
+| Aspect | Why |
+|--------|-----|
+| **NLI-based (not LLM-as-judge)** | Deterministic, reproducible, lower cost, no API dependency for evaluation |
+| **Grounding against retrieved chunks (not model knowledge)** | Isolates the RAG pipeline — detects when the model ignores provided context and fabricates |
+| **Claim decomposition first** | A single response may contain both supported and fabricated statements; aggregate scoring masks individual failures |
+| **Full details_json stored** | Enables drill-down: an analyst can inspect exactly which claim was contradicted and by which source passage |
+| **Shared module across both variants** | Same scorer runs on both A and B; consistent measurement ensures fair comparison |
