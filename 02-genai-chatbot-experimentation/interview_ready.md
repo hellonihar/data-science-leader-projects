@@ -2,15 +2,15 @@
 
 ## Problem Domain & Solution Approach
 
-Enterprises deploying generative AI chatbots face a critical challenge: how do you rigorously measure whether your chatbot is actually improving outcomes? Without A/B testing, teams rely on intuition and anecdotal feedback, leading to deployment of models that may hallucinate more, frustrate users, or serve answers inconsistently across topics. The core problem is that LLM-based chatbots are stochastic systems — the same prompt can produce meaningfully different responses, making it difficult to isolate whether a change to the model, prompt, or retrieval strategy actually drives better user outcomes. Organizations need a repeatable, data-driven experimentation framework that treats the chatbot as a product feature to be optimized, not just an API endpoint to be integrated.
+Enterprises deploying generative AI chatbots in healthcare face a critical challenge: how do you rigorously measure whether your chatbot is actually improving clinical outcomes? A chatbot that hallucinates a drug interaction or misstates a treatment protocol isn't just frustrating — it's a patient safety risk. Without A/B testing, teams rely on intuition and anecdotal feedback, leading to deployment of models that may hallucinate more, frustrate clinicians, or serve answers inconsistently across medical specialties. The core problem is that LLM-based chatbots are stochastic systems — the same prompt can produce meaningfully different responses, making it difficult to isolate whether a change to the model, prompt, or retrieval strategy actually drives better clinical outcomes. Healthcare organizations need a repeatable, data-driven experimentation framework that treats the chatbot as a clinical decision support tool to be rigorously validated, not just an API endpoint to be integrated.
 
-This project addresses that gap by building a full-stack A/B testing platform purpose-built for GenAI chatbots. The system compares two variants head-to-head: a Baseline variant that sends user queries directly to a large language model with no additional context, and a Fine-tuned + RAG variant that first retrieves relevant document chunks from a vector database and injects them into the prompt before generation. By serving both variants simultaneously to deterministically assigned users, the platform isolates the marginal impact of retrieval-augmented generation on response quality, latency, and cost. The entire system is designed to produce statistically defensible answers to questions like "Does adding RAG improve resolution rate?" and "Does the fine-tuned model hallucinate less?"
+This project addresses that gap by building a full-stack A/B testing platform purpose-built for GenAI chatbots. The system compares two variants head-to-head: a Baseline variant that sends user queries directly to a large language model with no additional context, and a Fine-tuned + RAG variant that first retrieves relevant document chunks from a vector database and injects them into the prompt before generation. By serving both variants simultaneously to deterministically assigned users, the platform isolates the marginal impact of retrieval-augmented generation on response quality, latency, and cost. The entire system is designed to produce statistically defensible answers to questions like "Does adding RAG improve clinical guidance accuracy?" and "Does the fine-tuned model hallucinate less on treatment protocols?"
 
 The solution approach follows a layered architecture. At the infrastructure layer, Docker Compose orchestrates PostgreSQL with pgvector for unified relational storage and vector embeddings, Redis for caching and async task queues, and a FastAPI backend that handles all API traffic asynchronously. The backend implements a deterministic user assignment engine using SHA-256 hashing to ensure consistent variant exposure without session drift, a pluggable LLM router that dispatches to either the baseline or fine-tuned model with latency instrumentation, and a complete RAG pipeline with document chunking, embedding, and semantic retrieval. Every response is automatically scored for factual consistency using a custom NLI-based hallucination detector that compares generated claims against the retrieved source documents.
 
-On the analytics and governance front, the platform computes real-time aggregate metrics — resolution rate, hallucination score, P95 latency, and token cost — grouped by variant with automatic statistical significance testing (chi-square for proportions, t-test for continuous metrics). A governance layer tracks fairness gaps across topic categories, maintains a full audit trail of all experiment changes and model assignments, and provides transparency endpoints that expose exactly which documents and model version produced each response. This ensures the platform not only measures performance but also supports Responsible AI requirements around bias detection, reproducibility, and compliance.
+On the analytics and governance front, the platform computes real-time aggregate metrics — resolution rate, hallucination score, P95 latency, and token cost — grouped by variant with automatic statistical significance testing (chi-square for proportions, t-test for continuous metrics). A governance layer tracks fairness gaps across medical specialties and demographic groups — critical for health equity compliance — maintains a full audit trail of all experiment changes and model assignments, and provides transparency endpoints that expose exactly which clinical source documents and model version produced each response. This ensures the platform not only measures performance but also supports Responsible AI requirements around bias detection, reproducibility, and regulatory compliance (HIPAA, FDA AI/ML framework).
 
-The frontend is a React 19 SPA with a side-by-side chat interface that displays both variants simultaneously for direct comparison, a feedback widget for collecting user satisfaction ratings, and three dashboard views: an analytics dashboard with Recharts time-series and bar charts, an experiment management interface for controlling A/B tests, and a governance dashboard with fairness heatmaps, audit logs, and transparency panels. The result is a complete, containerized experimentation platform that enables data science and product teams to make evidence-based decisions about their GenAI chatbot investments — from model selection and prompt engineering to RAG strategy and fine-tuning methodology.
+The frontend is a React 19 SPA with a side-by-side chat interface that displays both variants simultaneously for direct comparison, a feedback widget for collecting user satisfaction ratings, and three dashboard views: an analytics dashboard with Recharts time-series and bar charts, an experiment management interface for controlling A/B tests, and a governance dashboard with fairness heatmaps, audit logs, and transparency panels. The result is a complete, containerized experimentation platform that enables data science, clinical, and product teams to make evidence-based decisions about their GenAI chatbot investments — from model selection and prompt engineering to RAG strategy and fine-tuning methodology — with the rigor required for regulated healthcare environments.
 
 ## Data & Information Flow by Variant
 
@@ -120,9 +120,9 @@ User Query ──► POST /api/chat ──► Assignment Lookup (Redis/DB)
 | **Conversation threading** | conversation_id, message order, parent_message_id | `conversations` + `messages` tables |
 | **User feedback** | message_id, rating (1-5), thumbs_up (bool), timestamp | `feedback` table |
 | **Audit trail** | action, entity_type, entity_id, details_json, timestamp | `audit_log` table |
-| **Analytics aggregation** | Resolution rate, hallucination score, P95 latency, token cost, grouped by variant + time window | Computed query → cached in Redis → served via `/api/analytics/experiments/{id}` |
-| **Fairness tracking** | Resolution rate per topic category, variance across categories | `/api/governance/fairness` endpoint |
-| **Statistical testing** | Chi-square p-value (resolution rate), t-test p-value (latency/hallucination) | Computed on request via analytics endpoint |
+| **Analytics aggregation** | Clinical guidance accuracy, hallucination score, P95 latency, token cost, grouped by variant + time window | Computed query → cached in Redis → served via `/api/analytics/experiments/{id}` |
+| **Fairness tracking** | Clinical guidance accuracy per medical specialty and demographic group, variance across categories | `/api/governance/fairness` endpoint |
+| **Statistical testing** | Chi-square p-value (clinical guidance accuracy), t-test p-value (latency/hallucination) | Computed on request via analytics endpoint |
 
 ## Phase 1: Foundation & Scaffolding
 
@@ -152,11 +152,11 @@ User Query ──► POST /api/chat ──► Assignment Lookup (Redis/DB)
 
 ## Phase 4: Analytics & Governance
 
-11. **Analytics aggregation** — Build SQL queries to compute: resolution rate (rating ≥ 4), average hallucination score, P95 latency, average token cost, grouped by variant and time window. Expose via `/api/analytics/experiments/{id}`. Use Redis to cache frequent aggregations.
+11. **Analytics aggregation** — Build SQL queries to compute: clinical guidance accuracy rate (rating ≥ 4), average hallucination score, P95 latency, average token cost, grouped by variant and time window. Expose via `/api/analytics/experiments/{id}`. Use Redis to cache frequent aggregations.
 
-12. **Statistical significance** — Implement chi-square test for categorical metrics (resolution rate) and independent t-test for continuous metrics (latency, hallucination score). Compute p-values and display significance labels.
+12. **Statistical significance** — Implement chi-square test for categorical metrics (clinical guidance accuracy rate) and independent t-test for continuous metrics (latency, hallucination score). Compute p-values and display significance labels.
 
-13. **Governance layer** — Fairness metrics: group responses by topic category (auto-classified or user-tagged), compare resolution rate variance. Transparency endpoint: return full provenance (variant, model version, retrieved chunks). Audit trail: log every experiment CRUD, assignment, and feedback event to `audit_log`.
+13. **Governance layer** — Fairness metrics: group responses by medical specialty (cardiology, oncology, pediatrics) and demographic categories, compare clinical guidance accuracy variance across groups — directly supporting health equity monitoring. Transparency endpoint: return full provenance (variant, model version, retrieved clinical source chunks). Audit trail: log every experiment CRUD, assignment, and feedback event to `audit_log` for regulatory compliance.
 
 ## Phase 5: Frontend
 
@@ -166,13 +166,13 @@ User Query ──► POST /api/chat ──► Assignment Lookup (Redis/DB)
 
 16. **Analytics dashboard** — Recharts time-series charts for metric trends, bar charts for variant comparison, statistical significance badges. Latency distribution histogram.
 
-17. **Governance dashboard** — Fairness heatmap by topic category, audit trail table with search/filter, transparency detail panel.
+17. **Governance dashboard** — Fairness heatmap by medical specialty and demographic group, audit trail table with search/filter, transparency detail panel showing exact clinical sources used per response.
 
 18. **Document management UI** — Upload panel (drag-and-drop), indexed document list with chunk counts, delete button.
 
 ## Phase 6: Integration & Polish
 
-19. **Seed data & demo script** — Pre-populate sample documents (e.g., product FAQs, policy PDFs), sample conversations, and a pre-configured experiment so the demo is one-click.
+19. **Seed data & demo script** — Pre-populate sample documents (e.g., clinical practice guidelines for hypertension management, diabetes treatment protocols, drug interaction tables from public sources like CDC/WHO/NIH), sample conversations (patient queries about medication side effects, clinician questions about dosage guidelines), and a pre-configured experiment so the demo is one-click.
 
 20. **Docker Compose orchestration** — Wire all services together with proper health checks, volume mounts for persistence, and environment variable injection for API keys.
 
@@ -188,6 +188,7 @@ User Query ──► POST /api/chat ──► Assignment Lookup (Redis/DB)
 | **pgvector instead of separate vector DB** | Reduces ops complexity; single PostgreSQL handles relational data + embeddings; ACID for audit compliance |
 | **SHA-256 deterministic assignment** | Ensures consistent user experience per experiment while maintaining statistical validity |
 | **Custom NLI hallucination scorer** | Offline, no third-party data leakage, fully auditable, zero marginal cost per inference |
+| **Healthcare domain with stricter thresholds** | Any contradiction = Major Hallucination (patient safety); fairness tracked across demographic groups (health equity) |
 
 ---
 
@@ -199,9 +200,9 @@ The hallucination scorer is an **NLI-based (Natural Language Inference) factual 
 
 **1. Claim Decomposition**
 
-The assistant's response is split into atomic factual statements. Example response: *"Our return policy lasts 30 days from the date of purchase and covers unopened items only"* decomposes into two claims:
-- Claim A: "Return policy duration is 30 days from purchase"
-- Claim B: "Only unopened items are covered by the return policy"
+The assistant's response is split into atomic factual statements. Example response: *"The recommended starting dose of metformin for adults with type 2 diabetes is 500 mg twice daily, and it should not be used in patients with eGFR below 30 mL/min"* decomposes into two claims:
+- Claim A: "Starting dose of metformin for adults with type 2 diabetes is 500 mg twice daily"
+- Claim B: "Metformin is contraindicated when eGFR is below 30 mL/min"
 
 Decomposition is done via either a lightweight LLM call or a sentence-level segmentation model.
 
@@ -227,12 +228,14 @@ Per-response scores are calculated:
 - **Entailment ratio** = (# entailed claims) / (total claims)
 - **Contradiction ratio** = (# contradicted claims) / (total claims)
 
-Final category assignment:
+Final category assignment (healthcare-tuned thresholds — stricter than general domain):
 | Condition | Category |
 |-----------|----------|
-| Entailment ratio ≥ 80% AND contradiction ratio = 0% | **Consistent** |
+| Entailment ratio ≥ 90% AND contradiction ratio = 0% | **Consistent** |
 | Contradiction ratio > 0% | **Major Hallucination** |
 | Everything else (mixed or mostly neutral) | **Minor Inconsistency** |
+
+In healthcare, *any* contradiction is automatically a Major Hallucination due to patient safety risk. The entailment threshold is raised from 80% to 90% because minority unverifiable claims carry higher stakes in a clinical context.
 
 A numeric score (0–1) is also computed as the weighted combination of entailment and contradiction ratios.
 
@@ -252,3 +255,5 @@ Results are persisted in the `hallucination_scores` table:
 | **Claim decomposition first** | A single response may contain both supported and fabricated statements; aggregate scoring masks individual failures |
 | **Full details_json stored** | Enables drill-down: an analyst can inspect exactly which claim was contradicted and by which source passage |
 | **Shared module across both variants** | Same scorer runs on both A and B; consistent measurement ensures fair comparison |
+| **Healthcare-tuned thresholds** | 90% entailment threshold and zero-tolerance for contradiction reflect clinical safety requirements |
+| **Equity-aware fairness tracking** | Compares accuracy across medical specialties and demographics to detect systematic bias in clinical recommendations |
