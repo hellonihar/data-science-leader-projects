@@ -1,0 +1,27 @@
+[
+    {
+        "response": "The recommended starting dose of metformin for adults with type 2 diabetes is 500 mg twice daily. It should not be used in patients with eGFR below 30 mL/min.",
+        "source_chunks": ["First-line: Metformin 500 mg twice daily, titrate to 1000 mg twice daily as tolerated", "Metformin: eGFR < 30 mL/min"],
+        "variant": "B"
+    },
+    {
+        "response": "For hypertension, ACE inhibitors are recommended as first-line therapy. Target blood pressure should be below 130/80 mmHg for the general population.",
+        "source_chunks": ["ACE inhibitors or ARBs as initial therapy", "Target blood pressure goals: General population: < 130/80 mmHg"],
+        "variant": "B"
+    },
+    {
+        "response": "ACE inhibitors should be combined with ARBs for maximum effect in resistant hypertension.",
+        "source_chunks": ["Avoid combining ACE inhibitor and ARB"],
+        "variant": "B"
+    },
+    {
+        "response": "Warfarin interacts with many drugs. Amiodarone increases INR and requires warfarin dose reduction.",
+        "source_chunks": ["Amiodarone increases INR (reduce warfarin dose by 30-50%)"],
+        "variant": "B"
+    },
+    {
+        "response": "For patients with diabetes, the HbA1c target should be less than 6.5% for everyone.",
+        "source_chunks": ["HbA1c < 7% for most non-pregnant adults", "Less stringent HbA1c < 8% for patients with severe hypoglycemia history"],
+        "variant": "B"
+    }
+]
